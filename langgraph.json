@@ -1,0 +1,11 @@
+{
+  "dependencies": ["./bot"],
+  "graphs": {
+    "orchestrator_graph": "bot.orchestrator_graph:graph",
+    "orchestrator": "bot.orchestrator:graph",
+    "trading_graph": "bot.trade_team.team_graph:trading_graph",
+    "research_graph": "bot.research_team.team_graph:research_graph",
+    "paper_writing_graph": "bot.document_writing_team.team_graph:paper_writing_graph"
+  },
+  "env": ".env"
+}

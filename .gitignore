@@ -1,0 +1,26 @@
+cat <<EOL > .gitignore
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environment
+venv/
+.env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Cache and temporary files
+*.sqlite3
+*.pycache/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+EOL
+.env
