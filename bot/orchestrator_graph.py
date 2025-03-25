@@ -89,7 +89,7 @@ async def chatbot(state: State):
     messages = [{"role": "system", "content": prompt}] + state["messages"]
     llm = ChatOpenAI(
         model="gpt-4o-mini").bind_tools([weather_tool, create_reminder_tool, tavily_tool])
-    response = await llm.ainvoke(state["messages"])
+    response = await llm.ainvoke(messages)
     return {"messages": [response]}
 
 
