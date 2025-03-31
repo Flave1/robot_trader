@@ -3,25 +3,24 @@ from typing import TypedDict
 import requests
 from pydantic.v1 import Field
 from langchain_core.messages import ToolMessage
+from langgraph.types import StreamWriter, interrupt
 
 from bot.custom_types import CurrencyPair
 
 
-def search_currency_price_node(input: CurrencyPair):
+def search_currency_price_node(input: CurrencyPair, writer: StreamWriter):
 
-    """
-    Fetches the latest exchange rate for a given currency pair using ExchangeRate-API.
-
-    :param base_currency: The base currency (e.g., "USD").
-    :param target_currency: The target currency (e.g., "EUR").
-    :return: JSON response with exchange rate data.
-    """
-    current_date = datetime.datetime.today().strftime('%Y-%m-%d')
+    print("target_currencies", input['args'])
+    current_date = '2025-03-30' #datetime.datetime.today().strftime('%Y-%m-%d')
     api_key="cur_live_tJzey70L4c4V47hkangBCpKsGpW07Gm5ko65qm3W"
     tool_call_id = input["id"]
-    base_currency = input["args"]["base_currency"]
-    target_currency = input["args"]["target_currency"]
+    base_currency = input['args']["base_currency"]
+    target_currency = input['args']["target_currency"]
     target_currencies = [target_currency]
+
+
+    writer({"currency_result": [
+           {"currency": base_currency, "search_status": f"Checking update for {base_currency}"}]})
     try:
         url = 'https://api.currencyapi.com/v3/historical'
         headers = {
@@ -35,17 +34,10 @@ def search_currency_price_node(input: CurrencyPair):
         response = requests.get(url, headers=headers, params=params)
         if response.status_code == 200:
             result = response.json()
-            return {
-                "messages": [
-                                ToolMessage(
-                                    content=str(response.json()),
-                                    tool_call_id=tool_call_id
-                            )
-                        ]
-            }
+            return {"messages": [ToolMessage(content=str(result), tool_call_id=tool_call_id)], "currency_result": [{"currency": base_currency, "search_status": "", "result": result}]}
         else:
 
-            print("Error occurred!", response.text)
+            print("Error occurred!", response.content)
             return {
             "messages": [
                 ToolMessage(

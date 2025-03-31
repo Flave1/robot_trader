@@ -21,7 +21,9 @@ class AppState(MessagesState):
 
 class CurrencyPair(BaseModel):
     base_currency: str = Field(..., description="The first currency in a forex pair.")
-    target_currency: str = Field(..., description="The second currency in a forex pair.")  
+    target_currency: str = Field(..., description="The second currency in a forex pair.")
+    search_status: str
+    result: str
 
 
 class GenerativeUIState(TypedDict, total=False):
@@ -44,9 +46,15 @@ class Weather(TypedDict):
     search_status: str
     result: str
 
+class Currency(TypedDict):
+    currency: str
+    search_status: str
+    result: str
+
 
 class State(MessagesState):
     weather_forecast: Annotated[list[Weather], operator.add]
+    currency_result: Annotated[list[Currency], operator.add]
 
 
 class WeatherInput(TypedDict):
@@ -58,8 +66,6 @@ class ToolNodeArgs(TypedDict):
     name: str
     args: dict[str, Any]
     id: str
-    base_currency: str
-    target_currency: str
 
 
 class InputQuery(BaseModel):

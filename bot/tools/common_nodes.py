@@ -8,7 +8,7 @@ from langgraph.types import StreamWriter, interrupt, Send
 from langchain_community.tools.tavily_search import TavilySearchResults
 
 
-async def weather(input: WeatherInput, writer: StreamWriter):
+async def weather_node(input: WeatherInput, writer: StreamWriter):
     location = input["location"]
     tool_call_id = input["tool_call_id"]
 
@@ -19,11 +19,10 @@ async def weather(input: WeatherInput, writer: StreamWriter):
 
     await asyncio.sleep(2)
     weather = random.choice(["Sunny", "Cloudy", "Rainy", "Snowy"])
-
     return {"messages": [ToolMessage(content=weather, tool_call_id=tool_call_id)], "weather_forecast": [{"location": location, "search_status": "", "result": weather}]}
 
 
-async def reminder(input: ToolNodeArgs):
+async def reminder_node(input: ToolNodeArgs):
     res = interrupt(input['args']['reminder_text'])
 
     tool_answer = "Reminder created." if res == 'approve' else "Reminder creation cancelled by user."

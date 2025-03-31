@@ -4,7 +4,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from bot.tools.currency_api import search_currency_price_node
-from bot.tools.common_nodes import reminder, tavily_search_node, weather
+from bot.tools.common_nodes import reminder_node, tavily_search_node, weather_node
 from bot.tools.common_tools import create_reminder_tool, search_tavily_tool, weather_tool, search_currency_tool
 from bot.custom_types import State
 from langgraph.types import Send
@@ -31,7 +31,7 @@ async def chatbot(state: State):
     messages = [{"role": "system", "content": prompt}] + state["messages"]
     llm = ChatOpenAI(
         model="gpt-4o-mini").bind_tools([weather_tool, create_reminder_tool, search_tavily_tool, search_currency_tool])
-    response = await llm.ainvoke(messages)
+    response = await llm.ainvoke(state["messages"])
     return {"messages": [response]}
 
 
@@ -78,8 +78,8 @@ def hitl_router(state: State) -> Literal["hitl_node", "__end__"]:
 builder = StateGraph(State)
 
 builder.add_node("chatbot", chatbot)
-builder.add_node("weather", weather)
-builder.add_node("reminder", reminder)
+builder.add_node("weather", weather_node)
+builder.add_node("reminder", reminder_node)
 builder.add_node("search_internet", tavily_search_node)
 builder.add_node("search_currency_price", search_currency_price_node)
 
