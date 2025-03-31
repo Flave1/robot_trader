@@ -24,3 +24,4 @@ venv/
 *.swp
 EOL
 .env
+.langgrapg_api/
