@@ -1,4 +1,5 @@
-from typing import List, Literal, Union, Dict, Any, Optional
+import operator
+from typing import List, Union, Any, Optional
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel
@@ -18,6 +19,11 @@ class ChatInputType(BaseModel):
 class AppState(MessagesState):
     next: str
 
+class CurrencyPair(BaseModel):
+    base_currency: str = Field(..., description="The first currency in a forex pair.")
+    target_currency: str = Field(..., description="The second currency in a forex pair.")  
+
+
 class GenerativeUIState(TypedDict, total=False):
     class Config:
        arbitrary_types_allowed = True
@@ -30,3 +36,32 @@ class GenerativeUIState(TypedDict, total=False):
     tool_calls: Optional[List[dict]]
     """The result of a tool call."""
     tool_result: Optional[dict]
+
+
+
+class Weather(TypedDict):
+    location: str
+    search_status: str
+    result: str
+
+
+class State(MessagesState):
+    weather_forecast: Annotated[list[Weather], operator.add]
+
+
+class WeatherInput(TypedDict):
+    location: str
+    tool_call_id: str
+
+
+class ToolNodeArgs(TypedDict):
+    name: str
+    args: dict[str, Any]
+    id: str
+    base_currency: str
+    target_currency: str
+
+
+class InputQuery(BaseModel):
+    query: str = Field(..., description="The query to search on the internet")
+

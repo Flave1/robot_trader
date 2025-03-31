@@ -1,12 +1,10 @@
 import os
-from pydantic import BaseModel, Field
 from langchain_core.tools import tool
 from langchain_community.tools.tavily_search import TavilySearchResults
 from typing import List, Dict
 
+from bot.custom_types import InputQuery
 
-class InputQuery(BaseModel):
-    query: str = Field(..., description="The query to search on the internet")
 
 
 def tavily_search_wrapper(query: str) -> List[Dict[str, str]]:
