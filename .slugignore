@@ -32,4 +32,4 @@ venv/
 *.swp
 EOL
 .env
-.langgrapp_api/
+.langgraph_api/
