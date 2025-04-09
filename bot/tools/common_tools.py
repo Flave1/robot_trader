@@ -1,5 +1,3 @@
-
-from typing import Dict, List
 from langchain_core.tools import tool
 
 from bot.tools.currency_api import search_currency_price_node

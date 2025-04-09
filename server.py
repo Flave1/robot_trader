@@ -165,7 +165,7 @@ async def stop_agent(request: Request):
     raise HTTPException(status_code=404, detail="Thread is not running")
 
 def main():
-    uvicorn.run("bot.server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
 
 
 if __name__ == "__main__":

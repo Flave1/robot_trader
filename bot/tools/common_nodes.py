@@ -1,11 +1,10 @@
 import asyncio
 import os
 import random
-from typing import Dict, List
 from langchain_core.messages import ToolMessage
 from bot.custom_types import ToolNodeArgs, WeatherInput
 from langgraph.types import StreamWriter, interrupt, Send
-from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_community.tools.tavily_search.tool import TavilySearchResults
 
 
 async def weather_node(input: WeatherInput, writer: StreamWriter):
@@ -17,7 +16,7 @@ async def weather_node(input: WeatherInput, writer: StreamWriter):
     writer({"weather_forecast": [
            {"location": location, "search_status": f"Checking weather in {location}"}]})
 
-    await asyncio.sleep(2)
+    await asyncio.sleep(4)
     weather = random.choice(["Sunny", "Cloudy", "Rainy", "Snowy"])
     return {"messages": [ToolMessage(content=weather, tool_call_id=tool_call_id)], "weather_forecast": [{"location": location, "search_status": "", "result": weather}]}
 
@@ -29,6 +28,14 @@ async def reminder_node(input: ToolNodeArgs):
 
     return {"messages": [ToolMessage(content=tool_answer, tool_call_id=input["id"])]}
 
+def simple_search(query: str):
+     api_key = os.getenv("TAVILY_API_KEY")
+     if not api_key:
+        api_key = "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"
+     
+     tavily_search = TavilySearchResults(tavily_api_key=api_key, return_direct=True)
+     results = tavily_search.run(query)
+     return results
 
 async def tavily_search_node(input: ToolNodeArgs):
     """Search the internet using Tavily API"""

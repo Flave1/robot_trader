@@ -34,7 +34,7 @@ def search_currency_price_node(input: CurrencyPair, writer: StreamWriter):
         response = requests.get(url, headers=headers, params=params)
         if response.status_code == 200:
             result = response.json()
-            return {"messages": [ToolMessage(content=str(result), tool_call_id=tool_call_id)], "currency_result": [{"currency": base_currency, "search_status": "", "result": result}]}
+            return {"messages": [ToolMessage(content=str(result), tool_call_id=tool_call_id)], "currency_result": [{"currency": f"{base_currency}", "search_status": "", "result": result}]}
         else:
 
             print("Error occurred!", response.content)

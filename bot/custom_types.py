@@ -25,21 +25,10 @@ class CurrencyPair(BaseModel):
     search_status: str
     result: str
 
-
-class GenerativeUIState(TypedDict, total=False):
-    class Config:
-       arbitrary_types_allowed = True
-    """Worker to route to next. If no workers needed, route to FINISH."""
-    next: str
-    messages: Annotated[list, add_messages]
-    """Plain text response if no tool was used."""
-    result: Optional[str]
-    """A list of parsed tool calls."""
-    tool_calls: Optional[List[dict]]
-    """The result of a tool call."""
-    tool_result: Optional[dict]
-
-
+class CommonUpdateType(BaseModel):
+    label: str
+    status: str
+    result: str
 
 class Weather(TypedDict):
     location: str

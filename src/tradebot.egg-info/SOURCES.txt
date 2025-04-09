@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+src/application/services/meta_trading_app_service.py
+src/application/services/oanda_trading_app_service.py
+src/domain/entities/trade.py
+src/domain/interfaces/trading_service.py
+src/infrastructure/meta_api/meta_api_service.py
+src/infrastructure/oanda_api/oanda_api_service.py
+src/model_types/common.py
+src/tradebot.egg-info/PKG-INFO
+src/tradebot.egg-info/SOURCES.txt
+src/tradebot.egg-info/dependency_links.txt
+src/tradebot.egg-info/requires.txt
+src/tradebot.egg-info/top_level.txt
