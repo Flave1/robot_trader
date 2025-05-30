@@ -1,6 +1,6 @@
 import uvicorn
 from dotenv import load_dotenv
-from bot.utils import checkpoint_event, format_state_snapshot, interrupt_event, message_chunk_event, custom_event
+from src.bot.utils import checkpoint_event, format_state_snapshot, interrupt_event, message_chunk_event, custom_event
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
@@ -8,7 +8,7 @@ import asyncio
 from typing import AsyncGenerator, Dict
 from langgraph.types import Command
 
-from bot.orchestrator_graph import graph
+from src.bot.orchestrator_graph import graph, get_memory
 
 # Track active connections
 active_connections: Dict[str, asyncio.Event] = {}
@@ -37,11 +37,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Create the LangChain graph and add routes
-# graph = create_graph()
-# runnable = graph.with_types(input_type=ChatInputType, output_type=dict)
-# add_routes(app, runnable, path="/chat", playground_type="chat")
 
 
 @app.post("/agent")
@@ -87,10 +82,10 @@ async def agent(request: Request):
         raise HTTPException(status_code=400, detail="invalid request type")
     
 
-    print("request_type:", request_type)
-    print("thread_id:", thread_id)
-    print("input:", input)
-    print("config:", config)
+    # print("request_type:", request_type)
+    # print("thread_id:", thread_id)
+    # print("input:", input)
+    # print("config:", config)
 
     async def generate_events() -> AsyncGenerator[dict, None]:
         try:
@@ -127,19 +122,24 @@ async def agent(request: Request):
 
 @app.get("/state")
 async def state(thread_id: str | None = None):
-    """Endpoint returning current graph state."""
+    """Endpoint returning current graph state and conversation history."""
     if not thread_id:
         raise HTTPException(status_code=400, detail="thread_id is required")
 
     config = {"configurable": {"thread_id": thread_id}}
 
     state = await graph.aget_state(config)
-    return format_state_snapshot(state)
+    memory = get_memory(thread_id)
+    history = memory.load_memory_variables({}).get("chat_history", [])
+    return {
+        "state": format_state_snapshot(state),
+        "conversation_history": history
+    }
 
 
-@ app.get("/history")
+@app.get("/history")
 async def history(thread_id: str | None = None):
-    """Endpoint returning complete state history. Used for restoring graph."""
+    """Endpoint returning complete state history and conversation history."""
     if not thread_id:
         raise HTTPException(status_code=400, detail="thread_id is required")
 
@@ -148,7 +148,12 @@ async def history(thread_id: str | None = None):
     records = []
     async for state in graph.aget_state_history(config):
         records.append(format_state_snapshot(state))
-    return records
+    memory = get_memory(thread_id)
+    history = memory.load_memory_variables({}).get("chat_history", [])
+    return {
+        "state_history": records,
+        "conversation_history": history
+    }
 
 
 @app.post("/agent/stop")

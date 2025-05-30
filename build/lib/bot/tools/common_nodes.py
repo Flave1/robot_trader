@@ -2,7 +2,7 @@ import asyncio
 import os
 import random
 from langchain_core.messages import ToolMessage
-from bot.custom_types import ToolNodeArgs, WeatherInput
+from src.bot.custom_types import ToolNodeArgs, WeatherInput
 from langgraph.types import StreamWriter, interrupt, Send
 from langchain_community.tools.tavily_search.tool import TavilySearchResults
 
@@ -25,6 +25,13 @@ async def reminder_node(input: ToolNodeArgs):
     res = interrupt(input['args']['reminder_text'])
 
     tool_answer = "Reminder created." if res == 'approve' else "Reminder creation cancelled by user."
+
+    return {"messages": [ToolMessage(content=tool_answer, tool_call_id=input["id"])]}
+
+async def placetrade_node(input: ToolNodeArgs):
+    res = interrupt(input['args']['placetrade_text'])
+
+    tool_answer = "Trade Placed" if res == 'approve' else "Trade excution cancelled by user."
 
     return {"messages": [ToolMessage(content=tool_answer, tool_call_id=input["id"])]}
 

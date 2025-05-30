@@ -2,6 +2,15 @@ README.md
 pyproject.toml
 src/application/services/meta_trading_app_service.py
 src/application/services/oanda_trading_app_service.py
+src/bot/custom_types.py
+src/bot/orchestrator_graph.py
+src/bot/utils.py
+src/bot/tools/account_nodes.py
+src/bot/tools/account_tools.py
+src/bot/tools/common_nodes.py
+src/bot/tools/common_tools.py
+src/bot/tools/currency_api.py
+src/bot/tools/weather_api.py
 src/domain/entities/trade.py
 src/domain/interfaces/trading_service.py
 src/infrastructure/meta_api/meta_api_service.py

@@ -1,4 +1,5 @@
 application
+bot
 domain
 infrastructure
 model_types

@@ -1,8 +1,8 @@
 from langchain_core.tools import tool
 
-from bot.tools.currency_api import search_currency_price_node
-from bot.custom_types import CurrencyPair, InputQuery
-from bot.tools.common_nodes import tavily_search_node
+from src.bot.tools.currency_api import search_currency_price_node
+from src.bot.custom_types import CurrencyPair, InputQuery
+from src.bot.tools.common_nodes import tavily_search_node
 
 
 
@@ -16,6 +16,11 @@ async def weather_tool(query: str) -> str:
 async def create_reminder_tool(reminder_text: str) -> str:
     """Call to create a reminder"""
     return "Reminder created"
+
+@tool
+async def placetrade_tool(placetrade_text: str) -> str:
+    """Call to place a trade"""
+    return "Trade Placed"
 
 
 @tool("search_tavily_tool", args_schema=InputQuery, return_direct=True)
