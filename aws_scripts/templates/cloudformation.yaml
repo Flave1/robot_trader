@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy Lambda triggered by S3 and writing to DynamoDB
+
+Resources:
+
+  S3UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: your-upload-bucket-name  # Change to a unique name
+
+  FileMetadataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: FileMetadata
+      AttributeDefinitions:
+        - AttributeName: FileName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: FileName
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: lambda-s3-dynamodb-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaS3DynamoDBPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub arn:aws:s3:::${S3UploadBucket}/*
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource: !GetAtt FileMetadataTable.Arn
+
+  S3TriggeredLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: s3-to-dynamodb-lambda
+      Handler: lambda_handler.lambda_handler
+      Runtime: python3.11
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      Code:
+        S3Bucket: robot-code-bucket  # Upload your code ZIP here first
+        S3Key: robot_code.zip           # Name of your code ZIP file
+
+  S3LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref S3TriggeredLambda
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt S3UploadBucket.Arn
+
+  S3NotificationConfiguration:
+    Type: AWS::S3::BucketNotification
+    DependsOn: S3LambdaPermission
+    Properties:
+      Bucket: !Ref S3UploadBucket
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt S3TriggeredLambda.Arn
+
+Outputs:
+  BucketName:
+    Description: S3 Bucket name
+    Value: !Ref S3UploadBucket
+
+  DynamoDBTable:
+    Description: DynamoDB Table
+    Value: !Ref FileMetadataTable
+
+  LambdaFunction:
+    Description: Lambda Function ARN
+    Value: !GetAtt S3TriggeredLambda.Arn

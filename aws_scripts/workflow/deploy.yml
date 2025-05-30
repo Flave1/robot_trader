@@ -1,0 +1,45 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - main  # Change to your deployment branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install AWS CLI
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # Change to your region
+
+      - name: Zip Lambda code
+        run: zip lambda_code.zip lambda_handler.py
+
+      - name: Upload Lambda package to S3
+        run: aws s3 cp lambda_code.zip s3://robot-code-bucket/lambda_code.zip
+
+      - name: Deploy CloudFormation stack
+        run: |
+          aws cloudformation deploy \
+            --template-file cloudformation.yaml \
+            --stack-name s3-lambda-dynamodb-stack \
+            --capabilities CAPABILITY_NAMED_IAM
