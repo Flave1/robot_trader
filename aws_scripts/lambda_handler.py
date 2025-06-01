@@ -4,7 +4,7 @@ import boto3
 from datetime import datetime
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('FileMetadata')  # Replace with your DynamoDB table name
+table = dynamodb.Table('FileMetadata') 
 
 def lambda_handler(event, context):
     for record in event['Records']:
@@ -20,7 +20,6 @@ def lambda_handler(event, context):
             'UploadedAt': datetime.utcnow().isoformat()
         }
 
-        # Save to DynamoDB
         table.put_item(Item=metadata)
 
     return {

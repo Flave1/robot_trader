@@ -6,8 +6,7 @@ Resources:
   S3UploadBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: your-upload-bucket-name  # Change to a unique name
-
+      BucketName: robot-code-bucket 
   FileMetadataTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -60,8 +59,8 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Timeout: 30
       Code:
-        S3Bucket: robot-code-bucket  # Upload your code ZIP here first
-        S3Key: robot_code.zip           # Name of your code ZIP file
+        S3Bucket: robot-code-bucket  
+        S3Key: robot_code.zip          
 
   S3LambdaPermission:
     Type: AWS::Lambda::Permission

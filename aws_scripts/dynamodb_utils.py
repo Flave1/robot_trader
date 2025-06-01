@@ -1,9 +1,8 @@
 import boto3
 from botocore.exceptions import ClientError
 
-# Initialize DynamoDB resource
 dynamodb = boto3.resource('dynamodb')
-table_name = 'FileMetadata'  # Replace with your actual table name
+table_name = 'FileMetadata' 
 table = dynamodb.Table(table_name)
 
 def put_item(item):
