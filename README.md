@@ -29,25 +29,58 @@
 
 ```
 .
-├── .env                  # Environment variables
-├── pyproject.toml        # Python project dependencies
-├── requirements.txt      # Additional dependencies
-├── server.py             # FastAPI server entrypoint
-├── metaapi_mcp.py        # MetaTrader MCP integration
-├── oandaapi_mcp.py       # OANDA MCP integration
-├── src/
-│   ├── application/
-│   │   └── services/     # Trading app service logic (OANDA, MetaTrader)
-│   ├── bot/
-│   │   └── tools/        # Trading tools, strategy nodes, memory, etc.
-│   ├── domain/
-│   │   ├── entities/     # Core trading entities (e.g., Trade)
-│   │   └── interfaces/   # Service interfaces
-│   ├── infrastructure/
-│   │   ├── meta_api/     # MetaTrader API integration
-│   │   └── oanda_api/    # OANDA API integration
-│   └── model_types/      # Common data models
-└── ...
+├── .env.example
+├── Dockerfile
+├── LICENSE
+├── README.md
+├── docker-compose.yml
+├── metaapi_mcp.py
+├── oandaapi_mcp.py
+├── pyproject.toml
+├── requirements.txt
+├── server.py
+└── src/
+    ├── __init__.py
+    ├── application/
+    │   ├── __init__.py
+    │   └── services/
+    │       ├── __init__.py
+    │       ├── meta_api_service.py
+    │       └── oanda_api_service.py
+    ├── bot/
+    │   ├── __init__.py
+    │   ├── agent.py
+    │   └── tools/
+    │       ├── __init__.py
+    │       ├── base_tool.py
+    │       ├── chroma_tool.py
+    │       ├── firebase_tool.py
+    │       ├── get_active_positions.py
+    │       ├── get_market_data.py
+    │       ├── monitor_market.py
+    │       ├── place_trade.py
+    │       ├── postgres_tool.py
+    │       ├── redis_tool.py
+    │       └── tavily_tool.py
+    ├── domain/
+    │   ├── __init__.py
+    │   ├── entities/
+    │   │   ├── __init__.py
+    │   │   └── trade.py
+    │   └── interfaces/
+    │       ├── __init__.py
+    │       └── trading_service_interface.py
+    ├── infrastructure/
+    │   ├── __init__.py
+    │   ├── meta_api/
+    │   │   ├── __init__.py
+    │   │   └── meta_api_connection.py
+    │   └── oanda_api/
+    │       ├── __init__.py
+    │       └── oanda_connection.py
+    └── model_types/
+        ├── __init__.py
+        └── agent_state_types.py
 ```
 
 ---
@@ -57,10 +90,8 @@
 ### 1. **Clone the Backend Repository**
 ```bash
 git clone https://github.com/Flave1/robot_trader
-cd robot_trader
+cd backend
 ```
-
-
 
 ### 2. **Install Python Dependencies**
 ```bash
