@@ -1,5 +1,6 @@
 import json
 from langgraph.types import StateSnapshot
+import pandas as pd
 
 
 def checkpoint_event(value):
@@ -111,3 +112,37 @@ def format_state_snapshot(snapshot: StateSnapshot):
         "parent_config": snapshot.parent_config,
         "metadata": snapshot.metadata
     }
+
+def calculate_atr(df: pd.DataFrame) -> float:
+    try:
+        atr_value = df['close'].rolling(window=14).std().iloc[-1]
+        if pd.isna(atr_value) or atr_value == 0:
+            atr_value = df['close'].iloc[-1] * 0.01  # 1% of current price as fallback
+            return atr_value
+    except Exception as e:
+        print(f"ATR calculation failed: {e}, using fallback")
+        atr_value = df['close'].iloc[-1] * 0.01
+        return atr_value
+
+
+def get_trade_params(features_df: pd.DataFrame, prediction_result: dict, atr_value: float) -> dict:
+    trade_params = {
+            'entry': prediction_result['entry'],
+            'stop_loss': prediction_result['stop_loss'],
+            'take_profit': prediction_result['take_profit'],
+            'current_price': features_df['close'].iloc[-1],
+            'atr': atr_value,
+            'trailing': False
+        }
+    return trade_params
+
+def validate_prediction_result(features_df: pd.DataFrame, prediction_result: pd.DataFrame):
+        current_price = features_df['close'].iloc[-1]
+        if pd.isna(prediction_result['entry']) or prediction_result['entry'] <= 0:
+            prediction_result['entry'] = current_price
+        if pd.isna(prediction_result['stop_loss']) or prediction_result['stop_loss'] <= 0:
+            prediction_result['stop_loss'] = current_price * 0.99  # 1% below current price
+        if pd.isna(prediction_result['take_profit']) or prediction_result['take_profit'] <= 0:
+            prediction_result['take_profit'] = current_price * 1.01  # 1% above current price
+
+        return prediction_result

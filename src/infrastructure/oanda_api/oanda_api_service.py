@@ -7,10 +7,15 @@ from oandapyV20.endpoints.pricing import PricingStream
 from typing import Dict, Any, List
 
 class OandaApiService:
-    def __init__(self):
-        self.api_token = os.getenv("OANDA_API_TOKEN", "8199890480410b1b7f60b3f4961ffabd-87fbedbd3788b503a7a3e933c1aa790f")
-        self.account_id = os.getenv("OANDA_ACCOUNT_ID", "101-004-31438010-001")
-        self.client = oandapyV20.API(access_token=self.api_token)
+    def __init__(self, api_token: str = None, account_id: str = None, oanda_api_url: str = None, account_type: str = None):
+        self.api_token = api_token
+        self.account_id = account_id
+        self.oanda_api_url = oanda_api_url
+        self.account_type = account_type
+        self.client = oandapyV20.API(access_token=self.api_token, environment=self.account_type)
+
+    def format_price(self, price, decimals=5):
+        return f"{float(price):.{decimals}f}"
 
     def place_trade(self, symbol: str, units: float, take_profit: float = None, stop_loss: float = None) -> Dict[str, Any]:
         """
@@ -25,16 +30,17 @@ class OandaApiService:
             "order": {
                 "type": "MARKET",
                 "instrument": symbol,
-                "units": str(units),
+                "units": str(int(round(units))),
                 "timeInForce": "FOK",
                 "positionFill": "DEFAULT"
             }
         }
 
-        if take_profit:
-            order_data["order"]["takeProfitOnFill"] = {"price": str(take_profit)}
-        if stop_loss:
-            order_data["order"]["stopLossOnFill"] = {"price": str(stop_loss)}
+        # Only add takeProfitOnFill if valid
+        if take_profit is not None and take_profit > 0:
+            order_data["order"]["takeProfitOnFill"] = {"price": self.format_price(take_profit)}
+        if stop_loss is not None and stop_loss > 0:
+            order_data["order"]["stopLossOnFill"] = {"price": self.format_price(stop_loss)}
 
         order_create = OrderCreate(self.account_id, data=order_data)
         response = self.client.request(order_create)

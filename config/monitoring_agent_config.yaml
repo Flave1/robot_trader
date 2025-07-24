@@ -1,0 +1,27 @@
+# ARBIX Monitoring Agent Configuration
+
+symbols:
+  - EUR_USD
+  - GBP_USD
+  - USD_JPY
+  - AUD_USD
+
+trader_account_id: 1
+timeframe: M1
+confidence_threshold: 0.7
+initial_balance: 10000.0
+risk_pct: 0.01
+max_drawdown: 0.2
+max_trades: 5
+use_llm: true
+units: null  # Set to null for auto-calculation
+
+opportunity_criteria:
+  min_expected_return_pct: 0.2
+  min_confidence: 0.7
+  max_volatility: 0.05
+
+notification_preferences:
+  email: user@example.com
+  dashboard: true
+  sms: false 

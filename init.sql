@@ -1,0 +1,30 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR PRIMARY KEY,
+    email VARCHAR UNIQUE NOT NULL,
+    password VARCHAR NOT NULL,
+    full_legal_name VARCHAR,
+    date_of_birth VARCHAR,
+    nationality VARCHAR,
+    phone_number VARCHAR,
+    residential_address VARCHAR,
+    proof_of_address_url VARCHAR,
+    government_id_url VARCHAR,
+    employment_status VARCHAR,
+    occupation VARCHAR,
+    annual_income INTEGER,
+    source_of_funds VARCHAR,
+    net_worth INTEGER,
+    bank_account_details VARCHAR,
+    trading_experience VARCHAR,
+    knowledge_assessment_score INTEGER,
+    risk_tolerance VARCHAR,
+    account_type VARCHAR,
+    trading_currency VARCHAR,
+    tax_identification_number VARCHAR,
+    agreed_terms BOOLEAN DEFAULT FALSE,
+    agreed_risk_disclosure BOOLEAN DEFAULT FALSE,
+    agreed_privacy_policy BOOLEAN DEFAULT FALSE,
+    agreed_aml_kyc_policy BOOLEAN DEFAULT FALSE
+); 

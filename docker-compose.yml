@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  db:
+    image: ankane/pgvector
+    container_name: arbix_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: arbix_user
+      POSTGRES_PASSWORD: arbix_password!1
+      POSTGRES_DB: arbix_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arbix_user -d arbix_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

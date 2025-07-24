@@ -1,0 +1,26 @@
+# Core dependencies for ArbiX backend
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+pydantic
+requests
+
+# Data processing and analysis
+pandas
+numpy
+ta>=0.11.0
+textblob>=0.19.0
+
+# Machine learning (if needed)
+# scikit-learn
+# xgboost
+
+# Other utilities
+python-dotenv
+
+# Remove xgboost and related classical ML dependencies 
+pgvector 

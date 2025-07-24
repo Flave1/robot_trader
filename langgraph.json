@@ -1,11 +1,7 @@
 {
-  "dependencies": ["./bot"],
+  "dependencies": ["./backend"],
   "graphs": {
-    "orchestrator_graph": "bot.orchestrator_graph:graph",
-    "orchestrator": "bot.orchestrator:graph",
-    "trading_graph": "bot.trade_team.team_graph:trading_graph",
-    "research_graph": "bot.research_team.team_graph:research_graph",
-    "paper_writing_graph": "bot.document_writing_team.team_graph:paper_writing_graph"
+    "market_watch_dog_agent": "src.agents.market_watch_dog_agent:market_watch_dog_agent"
   },
   "env": ".env"
 }
