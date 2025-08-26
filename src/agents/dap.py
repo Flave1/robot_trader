@@ -288,7 +288,7 @@ def data_acquisition_tool(input: dict) -> Tuple[list[dict], list[dict]]:
         input (dict): An object containing the following fields:
             - symbol (str): The trading symbol (e.g., 'EUR_USD').
             - timeframe (str): The timeframe for the data (e.g., 'M1', 'H1').
-            - account_id (int): The account ID for the trader.
+            - trader_account_id (int): The account ID for the trader.
     
     Returns:
         Tuple[list[dict], list[dict]]:

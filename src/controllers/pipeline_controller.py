@@ -309,9 +309,9 @@ async def pipeline_execute_trade(req: FullPipelineRequest):
             break
         if not api_token or not oanda_account_id:
             raise HTTPException(status_code=400, detail="Oanda credentials not found for this account.")
-        oanda_service = OandaApiService(api_token=api_token, account_id=oanda_account_id, oanda_api_url=oanda_api_url, account_type=account_type)
+        oanda_service = OandaApiService(api_token=api_token, trader_account_id=oanda_account_id, oanda_api_url=oanda_api_url, account_type=account_type)
 
-        trade_result = oanda_service.place_trade(
+        trade_result = oanda_service.create_market_order(
             symbol=req.symbol,
             units=req.units,
             take_profit=req.tp,

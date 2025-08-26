@@ -2,36 +2,49 @@ from typing import Literal
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
-from src.bot.node.trade_nodes import classify_market_state_node, data_acquisition_node, engineer_features_node, price_prediction_node, risk_management_node, get_active_trades_node
-from src.agents.laa import engineer_features_tool
-from src.agents.msc import classify_market_state_tool
-from src.agents.pp import price_prediction_tool
-from src.agents.rm import risk_management_tool
-from src.agents.dap import data_acquisition_tool
-from src.bot.tools.common_tools import get_active_trades_tool
+from src.bot.tools.full_pipeline_tool import full_pipeline_tool
 from src.bot.custom_types import AppState
 from langgraph.types import Send
-from langgraph.checkpoint.memory import MemorySaver
+
 from src.core.bot_memory import get_memory
 
+# Import all trading tools
+from src.bot.tools.trading_tools import (
+    list_orders_tool, get_order_tool, cancel_order_tool, replace_order_tool,
+    create_order_tool, trade_execution_tool, list_trades_tool, get_trade_tool,
+    close_trade_tool, update_trade_orders_tool, get_active_positions_tool
+)
+
+# Import all trading nodes
+from src.bot.node.trade_nodes import (
+    list_orders_node, get_order_node, cancel_order_node, replace_order_node,
+    create_order_node, trade_execution_node, list_trades_node, get_trade_node,
+    close_trade_node, update_trade_orders_node, get_active_positions_node
+)
+
+# Import existing nodes
+from src.bot.node.full_pipeline_node import full_pipeline_node
 
 load_dotenv()
 
 async def chatbot(state: AppState, use_memory: bool = False):
     prompt = """
-    You are an Expert Forex Trader AI Agent. Your role is majorly on checking the state a provided currency pair by using this workflow
-    data_acquisition->engineer_features->classify_market_state->price_prediction->risk_management
-    to manage and optimize active trades based on real-time market analysis and intelligent decision-making. Your core responsibilities include:
-    Monitoring Active Trades: Constantly track open positions, including entry price, current price, volume, stop loss, and take profit levels.
-    Trade Actions:
-    Decide whether to hold, cancel, or execute trades based on live data, risk exposure, trend analysis, and trade objectives.
-    Opportunity Detection:
-    Continuously scan the forex market to identify profitable trading opportunities using strategies such as scalping, swing trading, or trend following.
-    Trade Advisory:
-    Based on current economic news, technical indicators, and price movements, advise whether to:
-    Cancel a risky or unprofitable open trade.
-    Hold a trade that's in motion but not yet reached its target.
-    Execute a new trade with parameters (pair, direction, volume, stop loss, take profit).
+    You are the ARBIX Monitoring Agent—an advanced, modular AI system for autonomous trading and trade management.
+
+    Your core capabilities include:
+    - Running the full analysis pipeline for any currency pair, including data acquisition, feature engineering, market state classification, price prediction, and risk management, all in a single, explainable workflow.
+    - Executing trades directly via broker APIs, with robust risk controls and automated trade logging.
+    - Monitoring and managing active trades in real time, including the ability to fetch, review, and act on open positions.
+    - Making intelligent, explainable decisions to open, hold, modify, or close trades based on live market data, risk exposure, and user-defined criteria.
+    - Operating as a modular, node-based agent, where each step (analysis, execution, monitoring) is handled by a dedicated, auditable node/tool.
+
+    Available Trading Operations:
+    - Order Management: List, get, cancel, replace, and create orders (market, limit, stop)
+    - Position Management: List trades, get trade details, close trades, update stop loss/take profit
+    - Active Positions: Monitor and manage all open positions
+    - Full Pipeline Analysis: Complete market analysis and trade decision pipeline
+
+    Your mission is to maximize trading performance and risk-adjusted returns, while providing transparency, auditability, and continuous improvement in all trading operations.
     """
     
     messages = [{"role": "system", "content": prompt}] + state["messages"]
@@ -46,12 +59,25 @@ async def chatbot(state: AppState, use_memory: bool = False):
         messages = [{"role": "system", "content": prompt}] + history + state["messages"]
 
     llm = ChatOpenAI(
-        model="gpt-4o-mini").bind_tools([data_acquisition_tool, 
-                                     engineer_features_tool, 
-                                     classify_market_state_tool, 
-                                     price_prediction_tool, 
-                                     risk_management_tool, 
-                                     get_active_trades_tool])
+        model="gpt-4o-mini").bind_tools([
+            # Full pipeline and analysis tools
+            full_pipeline_tool,
+            
+            # Order management tools
+            list_orders_tool,
+            get_order_tool,
+            cancel_order_tool,
+            replace_order_tool,
+            create_order_tool,
+            trade_execution_tool,
+            
+            # Position/trade management tools
+            list_trades_tool,
+            get_trade_tool,
+            close_trade_tool,
+            update_trade_orders_tool,
+            get_active_positions_tool
+        ])
     
     response = await llm.ainvoke(messages)
     
@@ -71,53 +97,97 @@ async def chatbot(state: AppState, use_memory: bool = False):
     
     return {"messages": [response]}
 
-
-# Chatbot node router. Based on tool calls, creates the list of the next parallel nodes.
-def assign_tool(state: AppState) -> Literal["data_acquisition_node", 
-                                            "engineer_features_node", 
-                                            "classify_market_state_node",
-                                            "price_prediction_node",
-                                            "risk_management_node", 
-                                            "get_active_trades_node", "__end__"]:
+def assign_tool(state: AppState) -> Literal[
+    "full_pipeline_node",
+    "list_orders_node",
+    "get_order_node",
+    "cancel_order_node",
+    "replace_order_node",
+    "create_order_node",
+    "trade_execution_node",
+    "list_trades_node",
+    "get_trade_node",
+    "close_trade_node",
+    "update_trade_orders_node",
+    "get_active_positions_node",
+    "__end__"]:
     messages = state["messages"]
     last_message = messages[-1]
     if last_message.tool_calls:
         send_list = []
         for tool in last_message.tool_calls:
-            if tool["name"] == 'data_acquisition_tool':
-                send_list.append(Send('data_acquisition_node', tool))
-            elif tool["name"] == 'engineer_features_tool':
-                send_list.append(Send('engineer_features_node', tool))
-            elif tool["name"] == 'classify_market_state_tool':
-                send_list.append(Send('classify_market_state_node', tool))
-            elif tool["name"] == 'price_prediction_tool':
-                send_list.append(Send('price_prediction_node', tool))
-            elif tool["name"] == 'risk_management_tool':
-                send_list.append(Send('risk_management_node', tool))
-            elif tool["name"] == 'get_active_trades_tool':
-                  send_list.append(Send('get_active_trades_node', {'account_id': tool['args']['account_id'], 'tool_call_id': tool['id']}))
+            if tool["name"] == 'full_pipeline_tool':
+                send_list.append(Send('full_pipeline_node', tool))
+            elif tool["name"] == 'list_orders_tool':
+                send_list.append(Send('list_orders_node', tool))
+            elif tool["name"] == 'get_order_tool':
+                send_list.append(Send('get_order_node', tool))
+            elif tool["name"] == 'cancel_order_tool':
+                send_list.append(Send('cancel_order_node', tool))
+            elif tool["name"] == 'replace_order_tool':
+                send_list.append(Send('replace_order_node', tool))
+            elif tool["name"] == 'create_order_tool':
+                send_list.append(Send('create_order_node', tool))
+            elif tool["name"] == 'trade_execution_tool':
+                send_list.append(Send('trade_execution_node', tool))
+            elif tool["name"] == 'list_trades_tool':
+                send_list.append(Send('list_trades_node', tool))
+            elif tool["name"] == 'get_trade_tool':
+                send_list.append(Send('get_trade_node', tool))
+            elif tool["name"] == 'close_trade_tool':
+                send_list.append(Send('close_trade_node', tool))
+            elif tool["name"] == 'update_trade_orders_tool':
+                send_list.append(Send('update_trade_orders_node', tool))
+            elif tool["name"] == 'get_active_positions_tool':
+                send_list.append(Send('get_active_positions_node', tool))
         return send_list if len(send_list) > 0 else "__end__"
     return "__end__"
 
-
 builder = StateGraph(AppState)
 
+# Add chatbot node
 builder.add_node("chatbot", chatbot)
-builder.add_node("data_acquisition_node", data_acquisition_node)
-builder.add_node("engineer_features_node", engineer_features_node)
-builder.add_node("classify_market_state_node", classify_market_state_node)
-builder.add_node("price_prediction_node", price_prediction_node)
-builder.add_node("risk_management_node", risk_management_node)
-builder.add_node("get_active_trades_node", get_active_trades_node)
+
+# Add analysis nodes
+builder.add_node("full_pipeline_node", full_pipeline_node)
+
+# Add order management nodes
+builder.add_node("list_orders_node", list_orders_node)
+builder.add_node("get_order_node", get_order_node)
+builder.add_node("cancel_order_node", cancel_order_node)
+builder.add_node("replace_order_node", replace_order_node)
+builder.add_node("create_order_node", create_order_node)
+builder.add_node("trade_execution_node", trade_execution_node)
+
+# Add position/trade management nodes
+builder.add_node("list_trades_node", list_trades_node)
+builder.add_node("get_trade_node", get_trade_node)
+builder.add_node("close_trade_node", close_trade_node)
+builder.add_node("update_trade_orders_node", update_trade_orders_node)
+builder.add_node("get_active_positions_node", get_active_positions_node)
+
+# Add edges
 builder.add_edge(START, "chatbot")
 builder.add_conditional_edges("chatbot", assign_tool)
-builder.add_edge("data_acquisition_node", "chatbot")
-builder.add_edge("engineer_features_node", "classify_market_state_node")
-builder.add_edge("classify_market_state_node", "price_prediction_node")
-builder.add_edge("price_prediction_node", "chatbot")
-builder.add_edge("risk_management_node", "chatbot")
-builder.add_edge("get_active_trades_node", "chatbot")
+
+# Analysis node edges
+builder.add_edge("full_pipeline_node", "chatbot")
+
+# Order management node edges
+builder.add_edge("list_orders_node", "chatbot")
+builder.add_edge("get_order_node", "chatbot")
+builder.add_edge("cancel_order_node", "chatbot")
+builder.add_edge("replace_order_node", "chatbot")
+builder.add_edge("create_order_node", "chatbot")
+builder.add_edge("trade_execution_node", "chatbot")
+
+# Position/trade management node edges
+builder.add_edge("list_trades_node", "chatbot")
+builder.add_edge("get_trade_node", "chatbot")
+builder.add_edge("close_trade_node", "chatbot")
+builder.add_edge("update_trade_orders_node", "chatbot")
+builder.add_edge("get_active_positions_node", "chatbot")
+
 builder.add_edge("chatbot", END)
 
-memory = MemorySaver()
-market_watch_dog_agent = builder.compile(checkpointer=memory)
+market_watch_dog_agent = builder.compile()

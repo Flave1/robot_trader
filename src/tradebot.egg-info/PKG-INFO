@@ -1,0 +1,27 @@
+Metadata-Version: 2.4
+Name: tradebot
+Version: 0.1.0
+Summary: Trading project
+Author-email: Favour Emmanuel <favouremmanuel433@email.com>
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: mcp[cli]>=1.6.0
+Requires-Dist: fastapi>=0.111.0
+Requires-Dist: langgraph>=0.2.73
+Requires-Dist: oandapyV20>=0.7.2
+Requires-Dist: tavily-python>=0.5.4
+Requires-Dist: langchain>=0.3.23
+Requires-Dist: langchain-community>=0.3.21
+Requires-Dist: langchain-openai>=0.3.12
+Requires-Dist: langchain-huggingface>=0.0.1
+Requires-Dist: uvicorn>=0.34.0
+Requires-Dist: python-dotenv>=1.1.0
+Requires-Dist: six>=1.17.0
+Requires-Dist: sqlalchemy>=2.0.41
+Requires-Dist: psycopg2-binary>=2.9.9
+Requires-Dist: passlib[bcrypt]>=1.7.4
+Requires-Dist: python-jose[cryptography]>=3.3.0
+Requires-Dist: pydantic[email]
+Requires-Dist: asyncpg
+Requires-Dist: bcrypt
+Requires-Dist: pgvector
+Requires-Dist: numpy<2.0.0

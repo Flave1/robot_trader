@@ -385,7 +385,7 @@ class PricePredictionAgent:
 
         try:
             response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=[{"role": "system", "content": prompt}]
             )
             content = response.choices[0].message.content.strip().lower()
@@ -483,7 +483,7 @@ class PricePredictionAgent:
 
         try:
             response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are a quantitative trading expert. Respond only with valid JSON."},
                     {"role": "user", "content": prompt}

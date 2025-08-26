@@ -146,3 +146,20 @@ def validate_prediction_result(features_df: pd.DataFrame, prediction_result: pd.
             prediction_result['take_profit'] = current_price * 1.01  # 1% above current price
 
         return prediction_result
+
+
+def extract_nested_fields(input_obj, field_names):
+    found = {}
+    if isinstance(input_obj, dict):
+        for field in field_names:
+            if field in input_obj:
+                found[field] = input_obj[field]
+        if len(found) == len(field_names):
+            return found
+        for key in ['input', 'args']:
+            if key in input_obj and isinstance(input_obj[key], dict):
+                nested_found = extract_nested_fields(input_obj[key], field_names)
+                found.update(nested_found)
+                if len(found) == len(field_names):
+                    return found
+    return found

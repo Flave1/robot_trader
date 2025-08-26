@@ -7,12 +7,12 @@ from src.users.trader_account_service import TraderAccountService
 router = APIRouter(tags=["Oanda"])
 
 @router.get("/oanda/active-trades")
-async def get_active_trades(account_id: int = Query(...), db: AsyncSession = Depends(get_db)):
+async def get_active_trades(trader_account_id: int = Query(...), db: AsyncSession = Depends(get_db)):
     """Fetch all active trades from Oanda for a specific trader account."""
-    api_token, oanda_account_id, oanda_api_url, account_type = await TraderAccountService.get_oanda_credentials_by_account_id(db, account_id)
+    api_token, oanda_account_id, oanda_api_url, account_type = await TraderAccountService.get_oanda_credentials_by_account_id(db, trader_account_id)
     if not api_token or not oanda_account_id:
         raise HTTPException(status_code=400, detail="Oanda credentials not found for this account.")
-    service = OandaApiService(api_token=api_token, account_id=oanda_account_id, oanda_api_url=oanda_api_url, account_type=account_type)
+    service = OandaApiService(api_token=api_token, trader_account_id=oanda_account_id, oanda_api_url=oanda_api_url, account_type=account_type)
     try:
         positions = service.get_active_positions()
         return positions
@@ -21,7 +21,7 @@ async def get_active_trades(account_id: int = Query(...), db: AsyncSession = Dep
 
 @router.post("/oanda/trade")
 async def execute_trade(
-    account_id: int = Query(...),
+    trader_account_id: int = Query(...),
     symbol: str = Query(...),
     units: float = Query(...),
     take_profit: float = Query(None),
@@ -29,10 +29,10 @@ async def execute_trade(
     db: AsyncSession = Depends(get_db)
 ):
     """Execute a trade on Oanda for a specific trader account."""
-    api_token, oanda_account_id, oanda_api_url, account_type = await TraderAccountService.get_oanda_credentials_by_account_id(db, account_id)
+    api_token, oanda_account_id, oanda_api_url, account_type = await TraderAccountService.get_oanda_credentials_by_account_id(db, trader_account_id)
     if not api_token or not oanda_account_id:
         raise HTTPException(status_code=400, detail="Oanda credentials not found for this account.")
-    service = OandaApiService(api_token=api_token, account_id=oanda_account_id, oanda_api_url=oanda_api_url, account_type=account_type)
+    service = OandaApiService(api_token=api_token, trader_account_id=oanda_account_id, oanda_api_url=oanda_api_url, account_type=account_type)
     try:
         result = service.place_trade(symbol, units, take_profit, stop_loss)
         return result

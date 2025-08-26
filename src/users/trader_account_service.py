@@ -34,9 +34,9 @@ class TraderAccountService:
         return db_trader_account
     
     @staticmethod
-    async def get_trader_account_by_id(db: AsyncSession, account_id: int) -> Optional[TraderAccount]:
+    async def get_trader_account_by_id(db: AsyncSession, trader_account_id: int) -> Optional[TraderAccount]:
         """Get trader account by account ID"""
-        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == account_id))
+        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == trader_account_id))
         return result.scalars().first()
     
     @staticmethod
@@ -46,12 +46,12 @@ class TraderAccountService:
         return result.scalars().all()
     
     @staticmethod
-    async def set_default_trader_account(db: AsyncSession, user_id: str, account_id: int) -> bool:
+    async def set_default_trader_account(db: AsyncSession, user_id: str, trader_account_id: int) -> bool:
         """Set the default trader account for a user"""
         result = await db.execute(select(User).filter(User.id == user_id))
         user = result.scalars().first()
         if user:
-            user.default_trader_account_id = account_id
+            user.default_trader_account_id = trader_account_id
             await db.commit()
             await db.refresh(user)
             return True
@@ -64,9 +64,9 @@ class TraderAccountService:
         return result.scalars().first()
     
     @staticmethod
-    async def update_trader_account(db: AsyncSession, account_id: int, trader_account_update: TraderAccountUpdate) -> Optional[TraderAccount]:
+    async def update_trader_account(db: AsyncSession, trader_account_id: int, trader_account_update: TraderAccountUpdate) -> Optional[TraderAccount]:
         """Update trader account settings"""
-        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == account_id))
+        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == trader_account_id))
         db_trader_account = result.scalars().first()
         
         if db_trader_account:
@@ -81,9 +81,9 @@ class TraderAccountService:
         return db_trader_account
     
     @staticmethod
-    async def update_account_balance(db: AsyncSession, account_id: int, new_balance: float) -> Optional[TraderAccount]:
+    async def update_account_balance(db: AsyncSession, trader_account_id: int, new_balance: float) -> Optional[TraderAccount]:
         """Update account balance (for trade execution)"""
-        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == account_id))
+        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == trader_account_id))
         db_trader_account = result.scalars().first()
         
         if db_trader_account:
@@ -95,9 +95,9 @@ class TraderAccountService:
         return db_trader_account
     
     @staticmethod
-    async def deactivate_account(db: AsyncSession, account_id: int) -> Optional[TraderAccount]:
+    async def deactivate_account(db: AsyncSession, trader_account_id: int) -> Optional[TraderAccount]:
         """Deactivate a trader account"""
-        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == account_id))
+        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == trader_account_id))
         db_trader_account = result.scalars().first()
         
         if db_trader_account:
@@ -109,9 +109,9 @@ class TraderAccountService:
         return db_trader_account
     
     @staticmethod
-    async def activate_account(db: AsyncSession, account_id: int) -> Optional[TraderAccount]:
+    async def activate_account(db: AsyncSession, trader_account_id: int) -> Optional[TraderAccount]:
         """Activate a trader account"""
-        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == account_id))
+        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == trader_account_id))
         db_trader_account = result.scalars().first()
         
         if db_trader_account:
@@ -129,9 +129,9 @@ class TraderAccountService:
         return result.scalars().all()
     
     @staticmethod
-    async def check_trading_permissions(db: AsyncSession, account_id: int) -> dict:
+    async def check_trading_permissions(db: AsyncSession, trader_account_id: int) -> dict:
         """Check if account can trade based on settings"""
-        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == account_id))
+        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == trader_account_id))
         db_trader_account = result.scalars().first()
         
         if not db_trader_account:
@@ -157,26 +157,116 @@ class TraderAccountService:
         }
 
     @staticmethod
-    async def get_account_state(db: AsyncSession, account_id: int) -> dict:
-        """Get account state"""
-        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == account_id))
+    async def get_open_trades_details(db: AsyncSession, trader_account_id: int) -> list:
+        """Get detailed information about open trades for a trader account"""
+        result = await db.execute(
+            select(TraderAccountsTrades).filter(
+                TraderAccountsTrades.trader_account_id == trader_account_id,
+                TraderAccountsTrades.status == "open"
+            ).order_by(TraderAccountsTrades.entry_time.desc())
+        )
+        open_trades = result.scalars().all()
+        
+        trades_details = []
+        for trade in open_trades:
+            trade_detail = {
+                'id': trade.id,
+                'symbol': trade.symbol,
+                'trade_type': trade.trade_type,
+                'units': trade.units,
+                'entry_price': trade.entry_price,
+                'entry_time': trade.entry_time.isoformat() if trade.entry_time else None,
+                'stop_loss': trade.stop_loss,
+                'take_profit': trade.take_profit,
+                'unrealized_pl': trade.unrealized_pl,
+                'oanda_order_id': trade.oanda_order_id,
+                'oanda_position_id': trade.oanda_position_id
+            }
+            trades_details.append(trade_detail)
+        
+        return trades_details
+
+    @staticmethod
+    async def calculate_drawdown(db: AsyncSession, trader_account_id: int) -> float:
+        """Calculate current drawdown percentage for a trader account"""
+        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == trader_account_id))
         db_trader_account = result.scalars().first()
+        
+        if not db_trader_account:
+            return 0.0
+        
+        # Get all trades (open and closed) for this account
+        trades_result = await db.execute(
+            select(TraderAccountsTrades).filter(
+                TraderAccountsTrades.trader_account_id == trader_account_id
+            ).order_by(TraderAccountsTrades.entry_time.asc())
+        )
+        trades = trades_result.scalars().all()
+        
+        if not trades:
+            return 0.0
+        
+        # Calculate peak balance and current balance
+        initial_balance = db_trader_account.account_balance
+        current_balance = initial_balance
+        peak_balance = initial_balance
+        
+        for trade in trades:
+            if trade.status == "closed" and trade.realized_pl:
+                current_balance += trade.realized_pl
+            elif trade.status == "open" and trade.unrealized_pl:
+                current_balance += trade.unrealized_pl
+            
+            peak_balance = max(peak_balance, current_balance)
+        
+        # Calculate drawdown
+        if peak_balance > 0:
+            drawdown = (peak_balance - current_balance) / peak_balance
+            return round(drawdown, 4)
+        
+        return 0.0
+
+    @staticmethod
+    async def get_account_state(db: AsyncSession, trader_account_id: int) -> dict:
+        """Get account state"""
+        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == trader_account_id))
+        db_trader_account = result.scalars().first()
+
+        if not db_trader_account:
+            raise ValueError(f"Trader account with id {trader_account_id} not found")
+
+        # Fetch actual number of open trades from database
+        open_trades_result = await db.execute(
+            select(TraderAccountsTrades).filter(
+                TraderAccountsTrades.trader_account_id == trader_account_id,
+                TraderAccountsTrades.status == "open"
+            )
+        )
+        open_trades = open_trades_result.scalars().all()
+        open_trades_count = len(open_trades)
+
+        # Calculate total unrealized P&L from open trades
+        total_unrealized_pl = sum(trade.unrealized_pl or 0 for trade in open_trades)
+
+        # Calculate actual drawdown
+        drawdown = await TraderAccountService.calculate_drawdown(db, trader_account_id)
 
         account_state = {
             'account_balance': db_trader_account.account_balance,
-            'open_trades': 0, 
-            'max_trades': 5,
-            'drawdown': 0.0,
-            'max_drawdown': 0.2,
-            'risk_pct': db_trader_account.risk_pct
+            'open_trades': open_trades_count,
+            'max_trades': db_trader_account.max_trades,
+            'drawdown': drawdown,
+            'max_drawdown': db_trader_account.max_drawdown,
+            'risk_pct': db_trader_account.risk_pct,
+            'total_unrealized_pl': total_unrealized_pl
         }
 
         return account_state
 
     @staticmethod
-    async def get_oanda_credentials_by_account_id(db: AsyncSession, account_id: int) -> tuple[str | None, str | None]:
-        """Fetch api_token and oanda_account_id for a trader account by account_id"""
-        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == account_id))
+    async def get_oanda_credentials_by_account_id(db: AsyncSession, trader_account_id: int) -> tuple[str | None, str | None]:
+        """Fetch api_token and oanda_account_id for a trader account by trader_account_id"""
+        result = await db.execute(select(TraderAccount).filter(TraderAccount.id == trader_account_id))
         trader_account = result.scalars().first()
         if trader_account:
             return trader_account.api_token, trader_account.oanda_account_id, trader_account.oanda_api_url, trader_account.account_type
@@ -212,25 +302,25 @@ class TraderAccountsTradesService:
         return result.scalars().first()
     
     @staticmethod
-    async def get_trades_by_account_id(db: AsyncSession, account_id: int) -> List[TraderAccountsTrades]:
+    async def get_trades_by_account_id(db: AsyncSession, trader_account_id: int) -> List[TraderAccountsTrades]:
         """Get all trades for a specific account"""
-        result = await db.execute(select(TraderAccountsTrades).filter(TraderAccountsTrades.trader_account_id == account_id))
+        result = await db.execute(select(TraderAccountsTrades).filter(TraderAccountsTrades.trader_account_id == trader_account_id))
         return result.scalars().all()
     
     @staticmethod
-    async def get_open_trades_by_account_id(db: AsyncSession, account_id: int) -> List[TraderAccountsTrades]:
+    async def get_open_trades_by_account_id(db: AsyncSession, trader_account_id: int) -> List[TraderAccountsTrades]:
         """Get all open trades for a specific account, syncing with Oanda first if possible."""
         # Fetch Oanda credentials for the trader account
-        api_token, oanda_account_id, oanda_api_url, account_type = await TraderAccountService.get_oanda_credentials_by_account_id(db, account_id)
+        api_token, oanda_account_id, oanda_api_url, account_type = await TraderAccountService.get_oanda_credentials_by_account_id(db, trader_account_id)
         if not api_token or not oanda_account_id:
             return []
         try:
-            oanda_service = OandaApiService(api_token=api_token, account_id=oanda_account_id, oanda_api_url=oanda_api_url, account_type=account_type)
+            oanda_service = OandaApiService(api_token=api_token, trader_account_id=oanda_account_id, oanda_api_url=oanda_api_url, account_type=account_type)
             oanda_positions = oanda_service.get_active_positions()  # Synchronous call
 
             # Fetch open trades from DB
             result = await db.execute(select(TraderAccountsTrades).filter(
-                TraderAccountsTrades.trader_account_id == account_id,
+                TraderAccountsTrades.trader_account_id == trader_account_id,
                 TraderAccountsTrades.status == "open"
             ))
             db_trades = result.scalars().all()
@@ -258,7 +348,7 @@ class TraderAccountsTradesService:
                         db_trade.updated_at = datetime.utcnow()
                     else:
                         new_trade = TraderAccountsTrades(
-                            trader_account_id=account_id,
+                            trader_account_id=trader_account_id,
                             symbol=symbol,
                             trade_type=trade_type,
                             units=units,
@@ -281,11 +371,11 @@ class TraderAccountsTradesService:
 
             await db.commit()
         except Exception as e:
-            print(f"Oanda sync failed for account {account_id}: {e}")
+            print(f"Oanda sync failed for account {trader_account_id}: {e}")
 
         # Return updated open trades from DB
         result = await db.execute(select(TraderAccountsTrades).filter(
-            TraderAccountsTrades.trader_account_id == account_id,
+            TraderAccountsTrades.trader_account_id == trader_account_id,
             TraderAccountsTrades.status == "open"
         ))
         return result.scalars().all()

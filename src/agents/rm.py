@@ -25,14 +25,14 @@ class RiskManagementAgent:
         else:
             self.client = None
 
-    def calculate_position_size(self, account_balance: float, entry: float, stop_loss: float, risk_pct: float = 0.01, atr: Optional[float] = None, kelly: bool = False, win_rate: float = 0.55, rr: float = 2.0, max_risk_pct: float = 0.2) -> float:
+    def calculate_position_size(self, account_balance: float, entry: float, stop_loss: float, risk_pct: float = 0.2, atr: Optional[float] = None, kelly: bool = False, win_rate: float = 0.55, rr: float = 2.0, max_risk_pct: float = 0.2) -> float:
         """
         Calculate position size based on risk per trade, ATR, and optionally Kelly Criterion.
         Enforces a maximum risk of 20% of account balance.
         """
         # Enforce max risk of 20%
-        risk_pct = min(risk_pct, max_risk_pct)
-        risk_amount = account_balance * risk_pct
+        # risk_pct = min(risk_pct, max_risk_pct)
+        risk_amount = account_balance * 0.9 #* risk_pct
         stop_dist = abs(entry - stop_loss)
         if stop_dist == 0:
             return 0.0
@@ -110,7 +110,7 @@ class RiskManagementAgent:
             account_balance=account_state['account_balance'],
             entry=trade_params['entry'],
             stop_loss=trade_params['stop_loss'],
-            risk_pct=account_state.get('risk_pct', 0.02),
+            risk_pct=account_state.get('risk_pct'),
             atr=trade_params.get('atr'),
             kelly=account_state.get('kelly', False),
             win_rate=account_state.get('win_rate'),
@@ -169,7 +169,7 @@ async def risk_management_tool(input: dict) -> Dict:
         input (dict): An object containing:
             - features_df (list[dict]): The features data as a list of dicts.
             - prediction_result (dict): The output from the price prediction tool.
-            - account_id (int): The unique identifier for the trader's account.
+            - trader_account_id (int): The unique identifier for the trader's account.
 
     Returns:
         Dict: A dictionary containing risk management results, such as recommended position size, stop loss, take profit, and risk metrics.
@@ -186,7 +186,7 @@ async def risk_management_tool(input: dict) -> Dict:
     async for db in get_db():
         atr_value = calculate_atr(features_df)
         trade_params = get_trade_params(features_df, prediction_result, atr_value)
-        account_state = await TraderAccountService.get_account_state(db, input["account_id"])
+        account_state = await TraderAccountService.get_account_state(db, input["trader_account_id"])
         break
 
     trade_params = {

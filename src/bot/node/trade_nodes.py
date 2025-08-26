@@ -1,174 +1,412 @@
-from langgraph.types import StreamWriter
-from src.bot.custom_types import ActiveTradesInput, AnalysisInputModel
-from src.agents.dap import data_acquisition_tool
-# from langchain_core.messages import ToolMessage
-from langgraph.prebuilt.tool_node import ToolMessage
-from src.agents.laa import FeatureEngineerData, engineer_features_tool
-from src.agents.msc import MarketStateClassifierInput, classify_market_state_tool
-from src.agents.pp import PricePredictionInputData, price_prediction_tool
-from src.agents.rm import RiskManagementInputData, risk_management_tool
+from src.bot.custom_types import ActiveTradesInput
 from src.bot.tools.common_tools import get_active_trades_tool
+from src.bot.tools.trading_tools import (
+    list_orders_tool, get_order_tool, cancel_order_tool, replace_order_tool,
+    create_order_tool, trade_execution_tool, list_trades_tool, get_trade_tool,
+    close_trade_tool, update_trade_orders_tool, get_active_positions_tool
+)
+from src.bot.utils import extract_nested_fields
+from langgraph.types import StreamWriter
+from langgraph.prebuilt.tool_node import ToolMessage
+from typing import Dict, Any
 
+# ============================================================================
+# ORDER MANAGEMENT NODES
+# ============================================================================
 
-# Generic utility to extract fields from possibly nested dicts
-
-def extract_nested_fields(input_obj, field_names):
+async def list_orders_node(input: Dict[str, Any], writer: StreamWriter):
     """
-    Recursively search for the given field_names in a possibly nested dict (under 'input', 'args', etc).
-    Returns a dict of found fields.
+    Node for listing orders with filtering options.
     """
-    found = {}
-    if isinstance(input_obj, dict):
-        # Check if any field is present at this level
-        for field in field_names:
-            if field in input_obj:
-                found[field] = input_obj[field]
-        # If all found, return
-        if len(found) == len(field_names):
-            return found
-        # Otherwise, search nested dicts
-        for key in ['input', 'args']:
-            if key in input_obj and isinstance(input_obj[key], dict):
-                nested_found = extract_nested_fields(input_obj[key], field_names)
-                found.update(nested_found)
-                if len(found) == len(field_names):
-                    return found
-    return found
-
-
-async def data_acquisition_node(input: AnalysisInputModel, writer: StreamWriter):
-    extracted = extract_nested_fields(input, ['symbol', 'timeframe', 'id'])
-    symbol = extracted.get('symbol')
-    timeframe = extracted.get('timeframe')
+    extracted = extract_nested_fields(input, ['trader_account_id', 'state', 'count', 'instrument', 'id'])
+    trader_account_id = extracted.get('trader_account_id')
+    state = extracted.get('state', 'PENDING')
+    count = extracted.get('count', 50)
+    instrument = extracted.get('instrument')
     tool_call_id = extracted.get('id')
 
-    if not symbol or not timeframe:
+    if not trader_account_id:
         return {
-            "messages": [ToolMessage(content=f"Missing required fields: symbol={symbol}, timeframe={timeframe}", tool_call_id=tool_call_id)]
+            "messages": [
+                ToolMessage(content=f"Missing required field: trader_account_id={trader_account_id}", tool_call_id=tool_call_id)
+            ]
         }
 
-    # writer({"feedback_state": [
-    #     {"feedback": extracted, "state": f"Acquiring market data and news to analyse {extracted}"}
-    # ]})
+    tool_input = {
+        'trader_account_id': trader_account_id,
+        'state': state,
+        'count': count
+    }
+    if instrument:
+        tool_input['instrument'] = instrument
 
-    tool_input = {'symbol': symbol, 'timeframe': timeframe, 'tool_call_id': tool_call_id}
+    result = list_orders_tool(tool_input)
+    writer({"feedback_state": [{"feedback": result, "state": f"Listing orders for account {trader_account_id}"}]})
 
-    market_data, news_data = data_acquisition_tool({'input': tool_input})
-
-    content = {"type": "json", "market_data": market_data, "news_data": news_data}
+    content = {"type": "json", "orders_result": result}
     return {
         "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
-        "data_acquisition": [{"symbol": content, "search_status": "completed", "result": {"market_data": market_data, "news_data": news_data}}]
+        "orders": [result]
     }
 
+async def get_order_node(input: Dict[str, Any], writer: StreamWriter):
+    """
+    Node for getting specific order details.
+    """
+    extracted = extract_nested_fields(input, ['trader_account_id', 'order_id', 'id'])
+    trader_account_id = extracted.get('trader_account_id')
+    order_id = extracted.get('order_id')
+    tool_call_id = extracted.get('id')
 
-async def engineer_features_node(input: FeatureEngineerData, writer: StreamWriter):
-    extracted = extract_nested_fields(input, ['symbol', 'timeframe', 'features_df', 'tool_call_id'])
+    if not trader_account_id or not order_id:
+        return {
+            "messages": [
+                ToolMessage(content=f"Missing required fields: trader_account_id={trader_account_id}, order_id={order_id}", tool_call_id=tool_call_id)
+            ]
+        }
+
+    tool_input = {
+        'trader_account_id': trader_account_id,
+        'order_id': order_id
+    }
+
+    result = get_order_tool(tool_input)
+    writer({"feedback_state": [{"feedback": result, "state": f"Getting order {order_id}"}]})
+
+    content = {"type": "json", "order_result": result}
+    return {
+        "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
+        "order": [result]
+    }
+
+async def cancel_order_node(input: Dict[str, Any], writer: StreamWriter):
+    """
+    Node for canceling a specific order.
+    """
+    extracted = extract_nested_fields(input, ['trader_account_id', 'order_id', 'id'])
+    trader_account_id = extracted.get('trader_account_id')
+    order_id = extracted.get('order_id')
+    tool_call_id = extracted.get('id')
+
+    if not trader_account_id or not order_id:
+        return {
+            "messages": [
+                ToolMessage(content=f"Missing required fields: trader_account_id={trader_account_id}, order_id={order_id}", tool_call_id=tool_call_id)
+            ]
+        }
+
+    tool_input = {
+        'trader_account_id': trader_account_id,
+        'order_id': order_id
+    }
+
+    result = cancel_order_tool(tool_input)
+    writer({"feedback_state": [{"feedback": result, "state": f"Canceling order {order_id}"}]})
+
+    content = {"type": "json", "cancel_result": result}
+    return {
+        "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
+        "order_cancellation": [result]
+    }
+
+async def replace_order_node(input: Dict[str, Any], writer: StreamWriter):
+    """
+    Node for replacing an existing order.
+    """
+    extracted = extract_nested_fields(input, ['trader_account_id', 'order_id', 'new_order_data', 'id'])
+    trader_account_id = extracted.get('trader_account_id')
+    order_id = extracted.get('order_id')
+    new_order_data = extracted.get('new_order_data')
+    tool_call_id = extracted.get('id')
+
+    if not trader_account_id or not order_id or not new_order_data:
+        return {
+            "messages": [
+                ToolMessage(content=f"Missing required fields: trader_account_id={trader_account_id}, order_id={order_id}, new_order_data={new_order_data}", tool_call_id=tool_call_id)
+            ]
+        }
+
+    tool_input = {
+        'trader_account_id': trader_account_id,
+        'order_id': order_id,
+        'new_order_data': new_order_data
+    }
+
+    result = replace_order_tool(tool_input)
+    writer({"feedback_state": [{"feedback": result, "state": f"Replacing order {order_id}"}]})
+
+    content = {"type": "json", "replace_result": result}
+    return {
+        "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
+        "order_replacement": [result]
+    }
+
+async def create_order_node(input: Dict[str, Any], writer: StreamWriter):
+    """
+    Node for creating new orders (market, limit, or stop).
+    """
+    extracted = extract_nested_fields(input, [
+        'trader_account_id', 'symbol', 'units', 'order_type', 'price', 
+        'take_profit', 'stop_loss', 'id'
+    ])
+    trader_account_id = extracted.get('trader_account_id')
     symbol = extracted.get('symbol')
-    timeframe = extracted.get('timeframe')
-    features_df = extracted.get('features_df')
-    tool_call_id = extracted.get('tool_call_id') or extracted.get('id')
+    units = extracted.get('units')
+    order_type = extracted.get('order_type', 'MARKET')
+    price = extracted.get('price')
+    take_profit = extracted.get('take_profit')
+    stop_loss = extracted.get('stop_loss')
+    tool_call_id = extracted.get('id')
 
-    if not symbol or not timeframe or features_df is None:
+    if not trader_account_id or not symbol or units is None:
         return {
-            "messages": [ToolMessage(content=f"Missing required fields: symbol={symbol}, timeframe={timeframe}, features_df={features_df}", tool_call_id=tool_call_id)]
+            "messages": [
+                ToolMessage(content=f"Missing required fields: trader_account_id={trader_account_id}, symbol={symbol}, units={units}", tool_call_id=tool_call_id)
+            ]
         }
 
-    tool_input = {'symbol': symbol, 'timeframe': timeframe, 'features_df': features_df, 'tool_call_id': tool_call_id}
-    features_result = engineer_features_tool({'input': tool_input})
+    tool_input = {
+        'trader_account_id': trader_account_id,
+        'symbol': symbol,
+        'units': units,
+        'order_type': order_type
+    }
+    
+    if price is not None:
+        tool_input['price'] = price
+    if take_profit is not None:
+        tool_input['take_profit'] = take_profit
+    if stop_loss is not None:
+        tool_input['stop_loss'] = stop_loss
 
-    writer({"feedback_state": [
-        {"feedback": tool_input, "state": f"Feature engineering"}
-    ]})
+    result = create_order_tool(tool_input)
+    writer({"feedback_state": [{"feedback": result, "state": f"Creating {order_type} order for {symbol}"}]})
+
+    content = {"type": "json", "order_creation_result": result}
     return {
-        "messages": [ToolMessage(content={"type": "json", "data": features_result}, tool_call_id=tool_call_id)],
-        "feature_engineering": [{"search_status": "completed", "result": {"features_data": features_result}}]
+        "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
+        "order_creation": [result]
     }
 
-async def classify_market_state_node(input: MarketStateClassifierInput, writer: StreamWriter):
-    extracted = extract_nested_fields(input, ['symbol', 'timeframe', 'features_df', 'tool_call_id'])
+async def trade_execution_node(input: Dict[str, Any], writer: StreamWriter):
+    """
+    Node for executing market trades (legacy compatibility).
+    """
+    extracted = extract_nested_fields(input, [
+        'trader_account_id', 'symbol', 'units', 'take_profit', 'stop_loss', 'id'
+    ])
+    trader_account_id = extracted.get('trader_account_id')
     symbol = extracted.get('symbol')
-    timeframe = extracted.get('timeframe')
-    features_df = extracted.get('features_df')
-    tool_call_id = extracted.get('tool_call_id') or extracted.get('id')
+    units = extracted.get('units')
+    take_profit = extracted.get('take_profit')
+    stop_loss = extracted.get('stop_loss')
+    tool_call_id = extracted.get('id')
 
-    if not symbol or not timeframe or features_df is None:
+    if not trader_account_id or not symbol or units is None:
         return {
-            "messages": [ToolMessage(content=f"Missing required fields: symbol={symbol}, timeframe={timeframe}, features_df={features_df}", tool_call_id=tool_call_id)]
+            "messages": [
+                ToolMessage(content=f"Missing required fields: trader_account_id={trader_account_id}, symbol={symbol}, units={units}", tool_call_id=tool_call_id)
+            ]
         }
 
-    tool_input = {'symbol': symbol, 'timeframe': timeframe, 'features_df': features_df, 'tool_call_id': tool_call_id}
-    market_state = await classify_market_state_tool({'input': tool_input})
+    tool_input = {
+        'trader_account_id': trader_account_id,
+        'symbol': symbol,
+        'units': units
+    }
+    
+    if take_profit is not None:
+        tool_input['take_profit'] = take_profit
+    if stop_loss is not None:
+        tool_input['stop_loss'] = stop_loss
 
-    writer({"feedback_state": [
-        {"feedback": market_state, "state": f"Classifying market"}
-    ]})
+    result = trade_execution_tool(tool_input)
+    writer({"feedback_state": [{"feedback": result, "state": f"Executing market trade for {symbol}"}]})
+
+    content = {"type": "json", "trade_execution_result": result}
     return {
-        "messages": [ToolMessage(content={"type": "json", "data": market_state}, tool_call_id=tool_call_id)],
-        "market_state_classification": [{"search_status": "completed", "result": {"market_state": market_state}}]
+        "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
+        "trade_execution": [result]
     }
 
+# ============================================================================
+# POSITION/TRADE MANAGEMENT NODES
+# ============================================================================
 
-async def price_prediction_node(input: PricePredictionInputData, writer: StreamWriter):
-    extracted = extract_nested_fields(input, ['symbol', 'timeframe', 'features_df', 'market_state', 'tool_call_id'])
-    symbol = extracted.get('symbol')
-    timeframe = extracted.get('timeframe')
-    features_df = extracted.get('features_df')
-    market_state = extracted.get('market_state')
-    tool_call_id = extracted.get('tool_call_id') or extracted.get('id')
+async def list_trades_node(input: Dict[str, Any], writer: StreamWriter):
+    """
+    Node for listing trades with filtering options.
+    """
+    extracted = extract_nested_fields(input, ['trader_account_id', 'state', 'count', 'instrument', 'id'])
+    trader_account_id = extracted.get('trader_account_id')
+    state = extracted.get('state', 'OPEN')
+    count = extracted.get('count', 50)
+    instrument = extracted.get('instrument')
+    tool_call_id = extracted.get('id')
 
-    if not symbol or not timeframe or features_df is None or market_state is None:
+    if not trader_account_id:
         return {
-            "messages": [ToolMessage(content=f"Missing required fields: symbol={symbol}, timeframe={timeframe}, features_df={features_df}, market_state={market_state}", tool_call_id=tool_call_id)]
+            "messages": [
+                ToolMessage(content=f"Missing required field: trader_account_id={trader_account_id}", tool_call_id=tool_call_id)
+            ]
         }
 
-    tool_input = {'symbol': symbol, 'timeframe': timeframe, 'features_df': features_df, 'market_state': market_state, 'tool_call_id': tool_call_id}
-    prediction_result = price_prediction_tool({'input': tool_input})
+    tool_input = {
+        'trader_account_id': trader_account_id,
+        'state': state,
+        'count': count
+    }
+    if instrument:
+        tool_input['instrument'] = instrument
 
-    writer({"feedback_state": [
-        {"feedback": prediction_result, "state": f"Predicting Price"}
-    ]})
+    result = list_trades_tool(tool_input)
+    writer({"feedback_state": [{"feedback": result, "state": f"Listing trades for account {trader_account_id}"}]})
 
+    content = {"type": "json", "trades_result": result}
     return {
-        "messages": [ToolMessage(content="Price prediction completed", tool_call_id=tool_call_id)],
-        "price_prediction": [{"search_status": "completed", "result": {"prediction_result": prediction_result}}]
+        "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
+        "trades": [result]
     }
 
+async def get_trade_node(input: Dict[str, Any], writer: StreamWriter):
+    """
+    Node for getting specific trade details.
+    """
+    extracted = extract_nested_fields(input, ['trader_account_id', 'trade_id', 'id'])
+    trader_account_id = extracted.get('trader_account_id')
+    trade_id = extracted.get('trade_id')
+    tool_call_id = extracted.get('id')
 
-async def risk_management_node(input: RiskManagementInputData, writer: StreamWriter):
-    extracted = extract_nested_fields(input, ['account_id', 'features_df', 'prediction_result', 'tool_call_id'])
-    account_id = extracted.get('account_id')
-    features_df = extracted.get('features_df')
-    prediction_result = extracted.get('prediction_result')
-    tool_call_id = extracted.get('tool_call_id') or extracted.get('id')
-
-    if not account_id or features_df is None or prediction_result is None:
+    if not trader_account_id or not trade_id:
         return {
-            "messages": [ToolMessage(content=f"Missing required fields: account_id={account_id}, features_df={features_df}, prediction_result={prediction_result}", tool_call_id=tool_call_id)]
+            "messages": [
+                ToolMessage(content=f"Missing required fields: trader_account_id={trader_account_id}, trade_id={trade_id}", tool_call_id=tool_call_id)
+            ]
         }
 
-    tool_input = {'account_id': account_id, 'features_df': features_df, 'prediction_result': prediction_result, 'tool_call_id': tool_call_id}
-    risk_result = await risk_management_tool({'input': tool_input})
-    writer({"feedback_state": [
-        {"feedback": risk_result, "state": f"Managing Risk"}
-    ]})
-    return {
-        "messages": [ToolMessage(content={"type": "json", "data": risk_result}, tool_call_id=tool_call_id)],
-        "risk_management": [{"search_status": "completed", "result": {"risk_result": risk_result}}]
+    tool_input = {
+        'trader_account_id': trader_account_id,
+        'trade_id': trade_id
     }
 
-async def get_active_trades_node(input: ActiveTradesInput, writer: StreamWriter):
-    extracted = extract_nested_fields(input, ['account_id', 'tool_call_id'])
-    account_id = extracted.get('account_id')
-    tool_call_id = extracted.get('tool_call_id') or extracted.get('id')
+    result = get_trade_tool(tool_input)
+    writer({"feedback_state": [{"feedback": result, "state": f"Getting trade {trade_id}"}]})
 
-    if not account_id:
+    content = {"type": "json", "trade_result": result}
+    return {
+        "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
+        "trade": [result]
+    }
+
+async def close_trade_node(input: Dict[str, Any], writer: StreamWriter):
+    """
+    Node for closing trades (partial or full).
+    """
+    extracted = extract_nested_fields(input, ['trader_account_id', 'trade_id', 'units', 'id'])
+    trader_account_id = extracted.get('trader_account_id')
+    trade_id = extracted.get('trade_id')
+    units = extracted.get('units', 'ALL')
+    tool_call_id = extracted.get('id')
+
+    if not trader_account_id or not trade_id:
         return {
-            "messages": [ToolMessage(content="account_id required", tool_call_id=tool_call_id)]
+            "messages": [
+                ToolMessage(content=f"Missing required fields: trader_account_id={trader_account_id}, trade_id={trade_id}", tool_call_id=tool_call_id)
+            ]
         }
-    active_trades = get_active_trades_tool({'account_id': account_id})
+
+    tool_input = {
+        'trader_account_id': trader_account_id,
+        'trade_id': trade_id,
+        'units': units
+    }
+
+    result = close_trade_tool(tool_input)
+    writer({"feedback_state": [{"feedback": result, "state": f"Closing trade {trade_id}"}]})
+
+    content = {"type": "json", "close_result": result}
+    return {
+        "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
+        "trade_closure": [result]
+    }
+
+async def update_trade_orders_node(input: Dict[str, Any], writer: StreamWriter):
+    """
+    Node for setting or updating stop loss and take profit for trades.
+    """
+    extracted = extract_nested_fields(input, ['trader_account_id', 'trade_id', 'stop_loss', 'take_profit', 'id'])
+    trader_account_id = extracted.get('trader_account_id')
+    trade_id = extracted.get('trade_id')
+    stop_loss = extracted.get('stop_loss')
+    take_profit = extracted.get('take_profit')
+    tool_call_id = extracted.get('id')
+
+    if not trader_account_id or not trade_id:
+        return {
+            "messages": [
+                ToolMessage(content=f"Missing required fields: trader_account_id={trader_account_id}, trade_id={trade_id}", tool_call_id=tool_call_id)
+            ]
+        }
+
+    tool_input = {
+        'trader_account_id': trader_account_id,
+        'trade_id': trade_id
+    }
+    
+    if stop_loss is not None:
+        tool_input['stop_loss'] = stop_loss
+    if take_profit is not None:
+        tool_input['take_profit'] = take_profit
+
+    result = update_trade_orders_tool(tool_input)
+    writer({"feedback_state": [{"feedback": result, "state": f"Updating trade orders for {trade_id}"}]})
+
+    content = {"type": "json", "update_result": result}
+    return {
+        "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
+        "trade_orders_update": [result]
+    }
+
+# async def get_active_positions_node(input: Dict[str, Any], writer: StreamWriter):
+#     """
+#     Node for getting all active positions for a trader account.
+#     """
+#     extracted = extract_nested_fields(input, ['trader_account_id', 'id'])
+#     trader_account_id = extracted.get('trader_account_id')
+#     tool_call_id = extracted.get('id')
+
+#     if not trader_account_id:
+#         return {
+#             "messages": [
+#                 ToolMessage(content=f"Missing required field: trader_account_id={trader_account_id}", tool_call_id=tool_call_id)
+#             ]
+#         }
+
+#     tool_input = {
+#         'trader_account_id': trader_account_id
+#     }
+
+#     result = get_active_positions_tool(tool_input)
+#     writer({"feedback_state": [{"feedback": result, "state": f"Getting active positions for account {trader_account_id}"}]})
+
+#     content = {"type": "json", "positions_result": result}
+#     return {
+    #     "messages": [ToolMessage(content=content, tool_call_id=tool_call_id)],
+    #     "active_positions": [result]
+    # }
+
+async def get_active_positions_node(input: ActiveTradesInput, writer: StreamWriter):
+    extracted = extract_nested_fields(input, ['trader_account_id', 'id'])
+    trader_account_id = extracted.get('trader_account_id')
+    tool_call_id = extracted.get('id')
+
+    if not trader_account_id:
+        return {
+            "messages": [ToolMessage(content="trader_account_id required", tool_call_id=tool_call_id)]
+        }
+    active_trades = get_active_trades_tool({'trader_account_id': trader_account_id})
     writer({"feedback_state": [
-        {"feedback": f"Retrieved {len(active_trades) if isinstance(active_trades, list) else 0} active trades", "state": f"Fetching active trades for account {account_id}"}
+        {"feedback": f"Retrieved {len(active_trades) if isinstance(active_trades, list) else 0} active trades", "state": f"Fetching active trades for account {trader_account_id}"}
     ]})
     return {"messages": [ToolMessage(content={"type": "json", "data": active_trades}, tool_call_id=tool_call_id)], 
             "feedback_state": [{"feedback": "Fetched Active trades", "search_status": "", "result": active_trades}]}

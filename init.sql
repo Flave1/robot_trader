@@ -26,5 +26,6 @@ CREATE TABLE IF NOT EXISTS users (
     agreed_terms BOOLEAN DEFAULT FALSE,
     agreed_risk_disclosure BOOLEAN DEFAULT FALSE,
     agreed_privacy_policy BOOLEAN DEFAULT FALSE,
-    agreed_aml_kyc_policy BOOLEAN DEFAULT FALSE
-); 
+    agreed_aml_kyc_policy BOOLEAN DEFAULT FALSE,
+    default_trader_account_id INTEGER
+);

@@ -10,9 +10,9 @@ class TradeExecutionAgent:
     Handles sending trade orders, setting SL/TP, monitoring fills, retrying on failure, and logging.
     Currently supports OANDA REST API.
     """
-    def __init__(self, oanda_token: str, account_id: str, oanda_url: str = None):
+    def __init__(self, oanda_token: str, trader_account_id: str, oanda_url: str = None):
         self.oanda_token = oanda_token
-        self.account_id = account_id
+        self.trader_account_id = trader_account_id
         self.oanda_url = oanda_url or os.getenv("OANDA_API_URL", "https://api-fxpractice.oanda.com/v3")
         self.session = requests.Session()
         self.session.headers.update({'Authorization': f'Bearer {self.oanda_token}', 'Content-Type': 'application/json'})
@@ -37,7 +37,7 @@ class TradeExecutionAgent:
             order["order"]["stopLossOnFill"] = {"price": str(sl)}
         if tp:
             order["order"]["takeProfitOnFill"] = {"price": str(tp)}
-        url = f"{self.oanda_url}/accounts/{self.account_id}/orders"
+        url = f"{self.oanda_url}/accounts/{self.trader_account_id}/orders"
         try:
             resp = self.session.post(url, json=order)
             resp.raise_for_status()
@@ -52,7 +52,7 @@ class TradeExecutionAgent:
         """
         Monitor order fill status. Returns True if filled, False otherwise.
         """
-        url = f"{self.oanda_url}/accounts/{self.account_id}/orders/{order_id}"
+        url = f"{self.oanda_url}/accounts/{self.trader_account_id}/orders/{order_id}"
         for _ in range(max_wait):
             try:
                 resp = self.session.get(url)
@@ -89,7 +89,7 @@ class TradeExecutionAgent:
         """
         Fetch current spread for a symbol from OANDA.
         """
-        url = f"{self.oanda_url}/accounts/{self.account_id}/pricing?instruments={symbol}"
+        url = f"{self.oanda_url}/accounts/{self.trader_account_id}/pricing?instruments={symbol}"
         try:
             resp = self.session.get(url)
             resp.raise_for_status()

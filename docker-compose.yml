@@ -19,5 +19,18 @@ services:
       timeout: 5s
       retries: 5
 
+  pgadmin:
+    image: dpage/pgadmin4
+    platform: linux/arm64/v8
+    container_name: arbix_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: favouremmanuel433@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
 volumes:
   postgres_data:

@@ -31,23 +31,23 @@ async def get_trade(trade_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Trade not found")
     return TraderAccountsTradesResponse.from_orm(trade)
 
-@router.get("/trader-account-trades/account/{account_id}")
-async def get_trades_by_account(account_id: int, db: AsyncSession = Depends(get_db)):
+@router.get("/trader-account-trades/account/{trader_account_id}")
+async def get_trades_by_account(trader_account_id: int, db: AsyncSession = Depends(get_db)):
     """Get all trades for a specific account"""
-    trades = await TraderAccountsTradesService.get_trades_by_account_id(db, account_id)
+    trades = await TraderAccountsTradesService.get_trades_by_account_id(db, trader_account_id)
     return [TraderAccountsTradesResponse.from_orm(trade) for trade in trades]
 
-@router.get("/trader-account-trades/account/{account_id}/open/{user_id}")
-async def get_open_trades_by_account(account_id: str, user_id: str, db: AsyncSession = Depends(get_db)):
-    """Get all open trades for a specific account, or for the user's default account if account_id is 'default' and user_id is provided"""
-    if account_id == 'default' and user_id:
+@router.get("/trader-account-trades/account/{trader_account_id}/open/{user_id}")
+async def get_open_trades_by_account(trader_account_id: str, user_id: str, db: AsyncSession = Depends(get_db)):
+    """Get all open trades for a specific account, or for the user's default account if trader_account_id is 'default' and user_id is provided"""
+    if trader_account_id == 'default' and user_id:
         default_account = await TraderAccountService.get_default_trader_account(db, user_id)
         if not default_account:
             raise HTTPException(status_code=404, detail="No default trader account found")
-        account_id = default_account.id
+        trader_account_id = default_account.id
     else:
-        account_id = int(account_id)
-    trades = await TraderAccountsTradesService.get_open_trades_by_account_id(db, account_id)
+        trader_account_id = int(trader_account_id)
+    trades = await TraderAccountsTradesService.get_open_trades_by_account_id(db, trader_account_id)
     return [TraderAccountsTradesResponse.from_orm(trade) for trade in trades]
 
 @router.put("/trader-account-trades/{trade_id}")

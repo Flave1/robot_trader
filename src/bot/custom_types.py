@@ -4,7 +4,7 @@ from typing import Dict, List, Union, Any, Optional
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 import pandas as pd
 from pydantic import BaseModel
-from typing import TypedDict
+from typing_extensions import TypedDict
 from typing import Annotated
 from langgraph.graph.message import add_messages
 from langgraph.graph import MessagesState
@@ -105,9 +105,9 @@ class PricePredictionInputData(TypedDict):
 class RiskManagementInputData(TypedDict):
     features_df: list[dict] = Field(..., description="features_df is the feature data as a list of dicts")
     prediction_result: Dict = Field(..., description="prediction_result is the predicted result")
-    account_id: int = Field(..., description="trader_account_id is the trader account Id")
+    trader_account_id: int = Field(..., description="trader_account_id is the trader account Id")
 
 
 class ActiveTradesInput(TypedDict):
-    account_id: int
+    trader_account_id: int
     tool_call_id: str

@@ -19,24 +19,24 @@ from src.bot.custom_types import ActiveTradesInput
 #     return search_currency_price_node(currencyPair)
 
 @tool
-def get_active_trades_tool(account_id: int):
+def get_active_trades_tool(trader_account_id: int):
     """
     Get all active trades for a specific trader account.
     
     Args:
-        account_id (int): The trader account ID to get active trades for.
+        trader_account_id (int): The trader account ID to get active trades for.
     
     Returns:
         List of active trades with details like symbol, trade_type, units, entry_price, etc.
     """
   
-    print("account_id", account_id)
+    print("trader_account_id", trader_account_id)
     async def fetch_active_trades():
         async for db in get_db():
-            api_token, oanda_account_id, oanda_api_url, account_type = await TraderAccountService.get_oanda_credentials_by_account_id(db, account_id)
+            api_token, oanda_account_id, oanda_api_url, account_type = await TraderAccountService.get_oanda_credentials_by_account_id(db, trader_account_id)
             if not api_token or not oanda_account_id:
                 return []
-            oanda_service = OandaApiService(api_token=api_token, account_id=oanda_account_id, oanda_api_url=oanda_api_url, account_type=account_type)
+            oanda_service = OandaApiService(api_token=api_token, trader_account_id=oanda_account_id, oanda_api_url=oanda_api_url, account_type=account_type)
             oanda_positions = oanda_service.get_active_positions()
             break
         return oanda_positions
